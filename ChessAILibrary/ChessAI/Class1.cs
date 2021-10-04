@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using System;
 
 public class SimpleChess
 {
@@ -1024,15 +1025,18 @@ public class ChessAI
         this.PressureWeight = PressureWeight;
         this.KingWeight = KingWeight;
         this.PawnWeight = PawnWeight;
+        this.fitnessAlgorithm = CalculateFitness;
     }
+    
 
     public int simulatedTurns;
     public int color;
     public float grainSize;
     int nodeCount;
+    private Func<SimpleChess, float> fitnessAlgorithm;
     public void IterativeDeepening(SimpleChess board, CancellationToken token)
     {
-        float firstGuess = CalculateFitness(board);
+        float firstGuess = fitnessAlgorithm(board);
         List<string> transpositionTable = new List<string>();
         List<MTDNode> nodes = new List<MTDNode>();
         for (int d = 1; d < simulatedTurns; d++)
@@ -1057,7 +1061,7 @@ public class ChessAI
     }
     public void IterativeDeepening(SimpleChess board)
     {
-        float firstGuess = CalculateFitness(board);
+        float firstGuess = fitnessAlgorithm(board);
         List<string> transpositionTable = new List<string>();
         List<MTDNode> nodes = new List<MTDNode>();
         for (int d = 1; d < simulatedTurns; d++)
@@ -1128,7 +1132,7 @@ public class ChessAI
         }
         if (depth <= 0)
         {
-            return CalculateFitness(board);
+            return fitnessAlgorithm(board);
         }
         else
         {
@@ -1246,46 +1250,6 @@ public class ChessAI
     public float PawnAdvancementWeight;
 
     //Fitness algorithm based on chess board evaluation guide at https://chessfox.com/example-of-the-complete-evaluation-process-of-chess-a-chess-position/
-
-    float CalculateEndgameFitness(SimpleChess board)
-    {
-        float fitness = 0;
-
-        List<SimpleChess.Coordinate> newBoard = new List<SimpleChess.Coordinate>(board.getPieces(1));
-        newBoard.AddRange(board.getPieces(-1));
-        foreach (SimpleChess.Coordinate location in newBoard)
-        {
-            int piece = board.getPiece(location);
-            if (System.Math.Abs(piece) == 1)
-            {
-                if (System.Math.Sign(piece) == color)
-                {
-                    if (color == 1)
-                    {
-                        fitness += location.y * PawnAdvancementWeight;
-                    }
-                    else
-                    {
-                        fitness += (7 - location.y) * PawnAdvancementWeight;
-                    }
-                }
-                else
-                {
-                    if (color == 1)
-                    {
-                        fitness -= location.y * PawnAdvancementWeight;
-                    }
-                    else
-                    {
-                        fitness -= (7 - location.y) * PawnAdvancementWeight;
-                    }
-                }
-            }
-
-        }
-
-        return fitness;
-    }
 
     public float CalculateFitness(SimpleChess board)
     {
@@ -1451,6 +1415,10 @@ public class ChessAI
             return -1;
         }
         return 1;
+    }
+    public void setFitnessAlgorithm(Func<SimpleChess, float> algorithm)
+    {
+        this.fitnessAlgorithm = algorithm;
     }
 }
 
