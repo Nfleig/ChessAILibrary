@@ -144,32 +144,15 @@ public class SimpleChess
         if (color == 1)
         {
             pieces = WhitePieces;
-            //pinnedPieces = getPinnedPieces(1);
-        }
-        else
-        {
-
-            //pinnedPieces = getPinnedPieces(-1);
         }
         foreach (Coordinate location in pieces)
         {
             moves.AddRange(generateMoves(location));
-            //Debug.Log(board[location.x, location.y] + " " + moves.Count);
         }
         return moves;
     }
     public List<Move> generateMoves(Coordinate location)
     {
-        /**
-        if(Piece.turn % 2 == 0)
-        {
-            pinnedPieces = getPinnedPieces(-1);
-        }
-        else
-        {
-            pinnedPieces = getPinnedPieces(1);
-        }
-        **/
         pinningPieces.Clear();
         pinnedPieces = getPinnedPieces(System.Math.Sign(boardArray[location.x, location.y]));
         List<Move> moves = new List<Move>();
@@ -392,13 +375,10 @@ public class SimpleChess
                 moves.Remove(move);
             }
         }
-        if (System.Math.Abs(piece) == 6 || (piece > 0 && WCheck) || (piece < 0 && BCheck))
+        if (Math.Abs(piece) == 6 || (piece > 0 && WCheck) || (piece < 0 && BCheck))
         {
-            //Debug.Log("Binding Moves");
             bindMoves(moves);
-            //specialCase = false;
         }
-        //Debug.Log(piece + ": " + moves.Count);
         return moves;
     }
     public void bindMoves(List<Move> moves)
@@ -409,7 +389,6 @@ public class SimpleChess
             SimpleChess newBoard = new SimpleChess(this);
             int piece = boardArray[move.from.x, move.from.y];
             newBoard.movePiece(move);
-            //Debug.Log(WKing.x + " " + WKing.y);
             if ((piece > 0 && newBoard.WCheck) || (piece < 0 && newBoard.BCheck))
             {
                 illegalMoves.Add(move);
@@ -420,22 +399,42 @@ public class SimpleChess
             moves.Remove(move);
         }
     }
-    /*
     public void movePiece(Move move)
     {
-        movePiece(move.from, move.to);
-        lastMove = move;
-        allMoves.Add(move);
-    }
-    */
-    public void movePiece(Move move)
-    {
-        lastMove = move;
-        allMoves.Add(move);
         int x1 = move.from.x;
         int y1 = move.from.y;
         int x2 = move.to.x;
         int y2 = move.to.y;
+        int endPiece = boardArray[x1, y1];
+        if (System.Math.Abs(endPiece) == 6)
+        {
+            if (move.from.x - move.to.x == 2)
+            {
+                if (boardArray[0, move.to.y] == 2 * System.Math.Sign(endPiece))
+                {
+                    movePiece(new Move(new Coordinate(0, move.to.y), new Coordinate(3, move.to.y)));
+                }
+            }
+            else if (move.from.x - move.to.x == -2)
+            {
+                if (boardArray[7, move.to.y] == 2 * System.Math.Sign(endPiece))
+                {
+                    movePiece(new Move(new Coordinate(7, move.to.y), new Coordinate(5, move.to.y)));
+                }
+            }
+            if (endPiece < 0)
+            {
+                BKing = move.to;
+                BCastle = false;
+            }
+            else
+            {
+                WKing = move.to;
+                WCastle = false;
+            }
+        }
+        lastMove = move;
+        allMoves.Add(move);
         capture = false;
         if (boardArray[x2, y2] != 0)
         {
@@ -446,7 +445,6 @@ public class SimpleChess
 
         boardArray[x2, y2] = boardArray[x1, y1];
         boardArray[x1, y1] = 0;
-        int endPiece = boardArray[x2, y2];
         if (endPiece > 0)
         {
             WhitePieces.Remove(move.from);
@@ -484,34 +482,7 @@ public class SimpleChess
                 boardArray[x2, y2] = move.promotion;
             }
         }
-        if (System.Math.Abs(endPiece) == 6)
-        {
-            if (move.from.x - move.to.x == 2)
-            {
-                if (boardArray[0, move.to.y] == 2 * System.Math.Sign(endPiece))
-                {
-                    movePiece(new Move(new Coordinate(0, move.to.y), new Coordinate(3, move.to.y)));
-                }
-            }
-            else if (move.from.x - move.to.x == -2)
-            {
-                if (boardArray[7, move.to.y] == 2 * System.Math.Sign(endPiece))
-                {
-                    movePiece(new Move(new Coordinate(7, move.to.y), new Coordinate(5, move.to.y)));
-                }
-            }
-            if (endPiece < 0)
-            {
-                BKing = move.to;
-                BCastle = false;
-            }
-            else
-            {
-                WKing = move.to;
-                WCastle = false;
-            }
-        }
-        //pinnedPieces = getPinnedPieces(endPiece / System.Math.Abs(endPiece));
+        
         if (pinnedPieces.Count == 0)
         {
             pinnedPieces = getPinnedPieces(System.Math.Sign(endPiece));
@@ -524,7 +495,6 @@ public class SimpleChess
         {
             WCheck = isCheck(1);
         }
-        //moves.Add(DeepGold.toChessNotation(this));
     }
     public void promotePiece(Coordinate location, int promotion)
     {
@@ -568,7 +538,6 @@ public class SimpleChess
         }
         else
         {
-            //Debug.Log(WKing.x + " " + WKing.y);
             return isThreatened(BKing, 1);
         }
     }
@@ -600,7 +569,6 @@ public class SimpleChess
         {
             king = BKing;
         }
-        //pieces.Add(toString(king));
         for (int i = 0; i < 8; i++)
         {
             int hit1 = 0;
@@ -615,7 +583,6 @@ public class SimpleChess
                 int generalHit = testSpace(king.x + (c * cos), king.y + (c * sin));
                 if (generalHit * color > 0)
                 {
-                    //pieces.Add(toString(new Coordinate(king.x + (c * cos), king.y + (c * sin))));
                     if (hit1 != 0)
                     {
                         break;
@@ -647,82 +614,6 @@ public class SimpleChess
     }
     public bool isThreatened(Coordinate location, int color)
     {
-        /*
-        int x = location.x;
-        int y = location.y;
-        int piece = boardArray[location.x, location.y];
-
-        for (int i = 0; i < 8; i++)
-        {
-            int hit = 0;
-            int c = 1;
-            int cos = cosValue[i];
-            int sin = sinValue[i];
-            while (x + (c * cos) > -1 && x + (c * cos) < 8 && y + (c * sin) > -1 && y + (c * sin) < 8 && hit == 0)
-            {
-                hit = testSpace(x + (c * cos), y + (c * sin));
-                if (hit * color > 0)
-                {
-                    if (i < 4 && (hit * color == 2 || hit * color == 5))
-                    {
-                        //Debug.Log(0);
-                        return true;
-                    }
-                    else if (i >= 4 && (hit * color == 4 || hit * color == 5))
-                    {
-                        //Debug.Log(1);
-                        return true;
-                    }
-                }
-                c++;
-            }
-        }
-        int[] hits = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        hits[0] = testSpace(x + 1, y + 2);
-        hits[1] = testSpace(x - 1, y + 2);
-        hits[2] = testSpace(x + 1, y - 2);
-        hits[3] = testSpace(x - 1, y - 2);
-        hits[4] = testSpace(x + 2, y + 1);
-        hits[5] = testSpace(x + 2, y - 1);
-        hits[6] = testSpace(x - 2, y + 1);
-        hits[7] = testSpace(x - 2, y - 1);
-
-        for (int i = 0; i < 8; i++)
-        {
-            if (hits[i] * color == 3)
-            {
-                //Debug.Log("Knight");
-                //Debug.Log(2);
-                return true;
-            }
-        }
-        if (color < 0)
-        {
-            hits[0] = testSpace(x - 1, y + 1);
-            hits[1] = testSpace(x + 1, y + 1);
-            if (hits[0] == -1 || hits[1] == -1)
-            {
-                //Debug.Log(3);
-                return true;
-            }
-        }
-        else
-        {
-            hits[0] = testSpace(x - 1, y - 1);
-            hits[1] = testSpace(x + 1, y - 1);
-            if (hits[0] == 1 || hits[1] == 1)
-            {
-                //Debug.Log(4);
-                return true;
-            }
-        }
-        if ((color < 0 && (System.Math.Abs(BKing.x - x) < 2 && System.Math.Abs(BKing.y - y) < 2) || (color > 0 && (System.Math.Abs(WKing.x - x) < 2 && System.Math.Abs(WKing.y - y) < 2))))
-        {
-            //Debug.Log(WKing.x + " " + WKing.y + " " + x + " " + y);
-            return true;
-        }
-        return false;
-        */
         List<Coordinate> pieces = getThreateningPieces(location, color);
         if (pieces.Count > 0)
         {
@@ -782,8 +673,6 @@ public class SimpleChess
         {
             if (testSpace(hits[i]) * color == 3)
             {
-                //Debug.Log("Knight");
-                //Debug.Log(2);
                 pieces.Add(hits[i]);
             }
         }
@@ -797,15 +686,6 @@ public class SimpleChess
             {
                 pieces.Add(new Coordinate(x + 1, y + 1));
             }
-            /*
-            hits[0] = new Coordinate(x - 1, y + 1);
-            hits[1] = new Coordinate(x + 1, y + 1);
-            if (hits[0] == -1 || hits[1] == -1)
-            {
-                //Debug.Log(3);
-                return true;
-            }
-            */
         }
         else
         {
@@ -880,14 +760,10 @@ public class SimpleChess
             move += "=";
             if (piece > 1)
             {
-                // move += piece;
-                //return "Piece at " + board.lastMove.to.x.ToString() + " " + board.lastMove.to.y.ToString() + ": " + piece;
                 move += pieceNotation[System.Math.Abs(piece) + 5];
             }
             else
             {
-                //return "Piece at " + board.lastMove.to.x.ToString() + " " + board.lastMove.to.y.ToString() + ": " + piece;
-                // move += piece;
                 move += pieceNotation[System.Math.Abs(piece) - 1];
             }
             if (board.BCheck || board.WCheck)
@@ -1156,7 +1032,6 @@ public class ChessAI
                     }
                 }
                 assignMoveOrder(newMoves);
-                //newMoves.Sort(MoveOrder);
                 fitness = float.NegativeInfinity;
                 float tempAlpha = alpha;
                 foreach (SimpleChess move in newMoves)
@@ -1192,7 +1067,6 @@ public class ChessAI
                     }
                 }
                 assignMoveOrder(newMoves);
-                //newMoves.Sort(MoveOrder);
                 fitness = float.PositiveInfinity;
                 float tempBeta = beta;
                 foreach (SimpleChess move in newMoves)
