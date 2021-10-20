@@ -131,7 +131,7 @@ public class SimpleChess
         this.pinnedPieces = getPinnedPieces(System.Math.Sign(boardArray[otherBoard.lastMove.to.x, otherBoard.lastMove.to.y]) * -1);
         this.WCastle = otherBoard.WCastle;
         this.BCastle = otherBoard.BCastle;
-        this.isAIControlled = true;
+        this.isAIControlled = otherBoard.isAIControlled;
     }
 
     int[] cosValue = { 1, 0, -1, 0, 1, -1, -1, 1 };
@@ -198,7 +198,7 @@ public class SimpleChess
                 List<Move> newMoves = new List<Move>();
                 foreach (Move move in moves)
                 {
-                    if ((piece == 1 && move.to.y == 7) || (piece == -1 && location.y == 0))
+                    if ((piece == 1 && move.to.y == 7) || (piece == -1 && move.to.y == 0))
                     {
 
                         if (isAIControlled)
@@ -482,7 +482,7 @@ public class SimpleChess
                 boardArray[x2, y2] = move.promotion;
             }
         }
-        
+
         if (pinnedPieces.Count == 0)
         {
             pinnedPieces = getPinnedPieces(System.Math.Sign(endPiece));
@@ -849,6 +849,10 @@ public class SimpleChess
         }
         return move;
     }
+    public void setAIControlled(bool isAIControlled)
+    {
+        this.isAIControlled = isAIControlled;
+    }
 }
 public class AIState
 {
@@ -903,7 +907,7 @@ public class ChessAI
         this.PawnWeight = PawnWeight;
         this.fitnessAlgorithm = CalculateFitness;
     }
-    
+
 
     public int simulatedTurns;
     public int color;
