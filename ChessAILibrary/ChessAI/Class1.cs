@@ -383,6 +383,7 @@ public class SimpleChess
     }
     public void bindMoves(List<Move> moves)
     {
+        /*
         List<Move> illegalMoves = new List<Move>();
         foreach (Move move in moves)
         {
@@ -398,6 +399,153 @@ public class SimpleChess
         {
             moves.Remove(move);
         }
+        */
+        if (moves.Count <= 0 || moves == null)
+        {
+            return;
+        }
+        if (pinnedPieces.Contains(moves[0].from.ToString()))
+        {
+            moves = new List<Move>();
+            return;
+        }
+        List<Move> illegalMoves = new List<Move>();
+        int color = Math.Sign(getPiece(moves[0].from));
+        if (Math.Abs(getPiece(moves[0].from)) == 6)
+        {
+            foreach (Move move in moves)
+            {
+                if (isThreatened(move.to, -color, move.from))
+                {
+                    illegalMoves.Add(move);
+                }
+            }
+        }
+        else
+        {
+            Coordinate king;
+            if (color > 0)
+            {
+                king = WKing;
+            }
+            else
+            {
+                king = BKing;
+            }
+            List<Coordinate> checkingPieces = getThreateningPieces(king, -color);
+
+            if (checkingPieces.Count == 1)
+            {
+                Coordinate piece = checkingPieces[0];
+                if (System.Math.Abs(testSpace(piece)) == 2 || System.Math.Abs(testSpace(piece)) == 5)
+                {
+                    if (king.x == piece.x || king.y == piece.y)
+                    {
+                        foreach (Move move in moves)
+                        {
+                            if (!(move.to.x - piece.x == 0 && king.x - piece.x == 0 || move.to.y - piece.y == 0 && king.y - piece.y == 0))
+                            {
+                                illegalMoves.Add(move);
+                            }
+                            else
+                            {
+                                if (!move.to.Equals(piece))
+                                {
+                                    if (move.to.x == king.x && (Max(king.y, piece.y, move.to.y) == move.to.y || Min(king.y, piece.y, move.to.y) == move.to.y))
+                                    {
+                                        illegalMoves.Add(move);
+                                    }
+                                    if (move.to.y == king.y && (Max(king.x, piece.x, move.to.x) == move.to.x || Min(king.x, piece.x, move.to.x) == move.to.x))
+                                    {
+                                        illegalMoves.Add(move);
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+                if (System.Math.Abs(testSpace(piece)) == 4 || System.Math.Abs(testSpace(piece)) == 5)
+                {
+                    float angle = (float)(king.y - piece.y) / (float)(king.x - piece.x);
+                    if (Math.Abs(angle) == 1)
+                    {
+                        foreach (Move move in moves)
+                        {
+                            bool stop = move.to.x == piece.x;
+                            if (stop && !(move.to.y == piece.y))
+                            {
+                                illegalMoves.Add(move);
+                            }
+                            if (!stop && !(((float)(move.to.y - piece.y) / (float)(move.to.x - piece.x)) == angle))
+                            {
+                                illegalMoves.Add(move);
+                            }
+                            else
+                            {
+                                if (!move.to.Equals(piece))
+                                {
+                                    if (Max(king.x, piece.x, move.to.x) == move.to.x || Min(king.x, piece.x, move.to.x) == move.to.x || Max(king.y, piece.y, move.to.y) == move.to.y || Min(king.y, piece.y, move.to.y) == move.to.y)
+                                    {
+                                        illegalMoves.Add(move);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (System.Math.Abs(testSpace(piece)) == 1 || Math.Abs(testSpace(piece)) == 3)
+                {
+                    foreach (Move move in moves)
+                    {
+                        if (!move.to.Equals(piece))
+                        {
+                            illegalMoves.Add(move);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                illegalMoves = new List<Move>(moves);
+            }
+        }
+        foreach (Move move in illegalMoves)
+        {
+            moves.Remove(move);
+        }
+    }
+    public int Max(params int[] numbers)
+    {
+        if (numbers.Length < 2)
+        {
+            return numbers[0];
+        }
+        int max = numbers[0];
+        for (int i = 1; i < numbers.Length; i++)
+        {
+            if (numbers[i] > max)
+            {
+                max = numbers[i];
+            }
+        }
+        return max;
+    }
+    public int Min(params int[] numbers)
+    {
+        if (numbers.Length < 2)
+        {
+            return numbers[0];
+        }
+        int min = numbers[0];
+        for (int i = 1; i < numbers.Length; i++)
+        {
+            if (numbers[i] < min)
+            {
+                min = numbers[i];
+            }
+        }
+        return min;
     }
     public void movePiece(Move move)
     {
@@ -615,17 +763,14 @@ public class SimpleChess
     public bool isThreatened(Coordinate location, int color)
     {
         List<Coordinate> pieces = getThreateningPieces(location, color);
-        if (pieces.Count > 0)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return pieces.Count > 0;
     }
-
-    public List<Coordinate> getThreateningPieces(Coordinate location, int color)
+    public bool isThreatened(Coordinate location, int color, Coordinate ignorePiece)
+    {
+        List<Coordinate> pieces = getThreateningPieces(location, color, ignorePiece);
+        return pieces.Count > 0;
+    }
+    public List<Coordinate> getThreateningPieces(Coordinate location, int color, Coordinate ignorePiece)
     {
         List<Coordinate> pieces = new List<Coordinate>();
         int x = location.x;
@@ -641,6 +786,10 @@ public class SimpleChess
             while (x + (c * cos) > -1 && x + (c * cos) < 8 && y + (c * sin) > -1 && y + (c * sin) < 8 && hit == 0)
             {
                 hit = testSpace(x + (c * cos), y + (c * sin));
+                if (x + (c * cos) == ignorePiece.x && y + (c * sin) == ignorePiece.y)
+                {
+                    hit = 0;
+                }
                 if (hit * color > 0)
                 {
                     if (i < 4 && (hit * color == 2 || hit * color == 5))
@@ -707,7 +856,13 @@ public class SimpleChess
             pieces.Add(WKing);
 
         }
+        pieces.Remove(ignorePiece);
+        return pieces;
+    }
+    public List<Coordinate> getThreateningPieces(Coordinate location, int color)
+    {
 
+        List<Coordinate> pieces = getThreateningPieces(location, color, new Coordinate(-1, -1));
         return pieces;
     }
     public string toString()
