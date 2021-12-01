@@ -1012,16 +1012,14 @@ public class SimpleChess
 public class AIState
 {
     public SimpleChess board;
-    public List<string> transpositionTable;
-    public List<ChessAI.MTDNode> nodes;
+    public Dictionary<string, ChessAI.MTDNode> transpositionTable;
     public float currentGuess;
     public int depth;
 
     public AIState(SimpleChess board, float currentGuess)
     {
         this.board = board;
-        this.transpositionTable = new List<string>();
-        this.nodes = new List<ChessAI.MTDNode>();
+        this.transpositionTable = new Dictionary<string, ChessAI.MTDNode>();
         this.currentGuess = currentGuess;
         this.depth = 1;
     }
@@ -1072,15 +1070,14 @@ public class ChessAI
     public void IterativeDeepening(SimpleChess board, CancellationToken token)
     {
         float firstGuess = fitnessAlgorithm(board);
-        List<string> transpositionTable = new List<string>();
-        List<MTDNode> nodes = new List<MTDNode>();
+        Dictionary<string, MTDNode> transpositionTable = new Dictionary<string, MTDNode>();
         for (int d = 1; d < simulatedTurns; d++)
         {
             if (token.IsCancellationRequested)
             {
                 token.ThrowIfCancellationRequested();
             }
-            firstGuess = MTD(board, firstGuess, d, transpositionTable, nodes);
+            firstGuess = MTD(board, firstGuess, d, transpositionTable);
         }
         board.fitness = firstGuess;
     }
@@ -1090,23 +1087,22 @@ public class ChessAI
         {
             token.ThrowIfCancellationRequested();
         }
-        state.currentGuess = MTD(state.board, state.currentGuess, state.depth, state.transpositionTable, state.nodes);
+        state.currentGuess = MTD(state.board, state.currentGuess, state.depth, state.transpositionTable);
         state.board.fitness = state.currentGuess;
         state.depth++;
     }
     public void IterativeDeepening(SimpleChess board)
     {
         float firstGuess = fitnessAlgorithm(board);
-        List<string> transpositionTable = new List<string>();
-        List<MTDNode> nodes = new List<MTDNode>();
+        Dictionary<string, MTDNode> transpositionTable = new Dictionary<string, MTDNode>();
         for (int d = 1; d < simulatedTurns; d++)
         {
-            firstGuess = MTD(board, firstGuess, d, transpositionTable, nodes);
+            firstGuess = MTD(board, firstGuess, d, transpositionTable);
         }
         board.fitness = firstGuess;
     }
     int searches = 0;
-    float MTD(SimpleChess board, float firstGuess, int depth, List<string> transpositionTable, List<MTDNode> nodes)
+    float MTD(SimpleChess board, float firstGuess, int depth, Dictionary<string, MTDNode> transpositionTable)
     {
         float fitness = firstGuess;
         float upperBound = float.PositiveInfinity;
@@ -1122,7 +1118,7 @@ public class ChessAI
             {
                 beta = fitness;
             }
-            fitness = AlphaBeta(board, false, beta - grainSize, beta, depth, transpositionTable, nodes);
+            fitness = AlphaBeta(board, false, beta - grainSize, beta, depth, transpositionTable);
             Interlocked.Increment(ref nodeCount);
             Interlocked.Increment(ref searches);
             if (fitness < beta)
@@ -1138,14 +1134,13 @@ public class ChessAI
     }
     int TTU;
 
-    float AlphaBeta(SimpleChess board, bool ourTurn, float alpha, float beta, int depth, List<string> transpositionTable, List<MTDNode> nodes)
+    float AlphaBeta(SimpleChess board, bool ourTurn, float alpha, float beta, int depth, Dictionary<string, MTDNode> transpositionTable)
     {
         string boardString = board.toString();
-        int index = transpositionTable.IndexOf(boardString);
-        if (index != -1)
+        if (transpositionTable.ContainsKey(boardString))
         {
             Interlocked.Increment(ref TTU);
-            MTDNode node = nodes[index];
+            MTDNode node = transpositionTable[boardString];
             if (node.hasLower && node.lowerBound >= beta)
             {
 
@@ -1158,11 +1153,11 @@ public class ChessAI
 
             if (node.hasLower)
             {
-                alpha = System.Math.Max(node.lowerBound, alpha);
+                alpha = Math.Max(node.lowerBound, alpha);
             }
             if (node.hasUpper)
             {
-                beta = System.Math.Min(node.upperBound, beta);
+                beta = Math.Min(node.upperBound, beta);
             }
         }
         if (depth <= 0)
@@ -1201,7 +1196,7 @@ public class ChessAI
                     }
                     else
                     {
-                        fitness = System.Math.Max(fitness, AlphaBeta(move, false, tempAlpha, beta, depth - 1, transpositionTable, nodes));
+                        fitness = System.Math.Max(fitness, AlphaBeta(move, false, tempAlpha, beta, depth - 1, transpositionTable));
                         Interlocked.Increment(ref nodeCount);
                         tempAlpha = System.Math.Max(tempAlpha, fitness);
                     }
@@ -1236,7 +1231,7 @@ public class ChessAI
                     }
                     else
                     {
-                        fitness = System.Math.Min(fitness, AlphaBeta(move, true, alpha, tempBeta, depth - 1, transpositionTable, nodes));
+                        fitness = System.Math.Min(fitness, AlphaBeta(move, true, alpha, tempBeta, depth - 1, transpositionTable));
                         Interlocked.Increment(ref nodeCount);
                         tempBeta = System.Math.Min(fitness, tempBeta);
                     }
@@ -1260,14 +1255,13 @@ public class ChessAI
                 node.lowerBound = fitness;
                 node.hasLower = true;
             }
-            if (index > 0)
+            if (transpositionTable.ContainsKey(boardString))
             {
-                nodes[index] = node;
+                transpositionTable[boardString] = node;
             }
             else
             {
-                transpositionTable.Add(boardString);
-                nodes.Add(node);
+                transpositionTable.Add(boardString, node);
             }
             return fitness;
         }
