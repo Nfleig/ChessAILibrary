@@ -2,29 +2,91 @@
 using System.Collections.Generic;
 using System.Threading;
 
-public class ChessAI
+public abstract class ChessEngine
 {
-    public struct MTDNode
+    protected Func<SimpleChess, float> _fitnessAlgorithm;
+    protected int _nodeCount;
+    protected bool _isBlack;
+
+    public int NodeCount => _nodeCount;
+
+    public bool IsBlack => _isBlack;
+
+    public void setFitnessAlgorithm(Func<SimpleChess, float> _fitnessAlgorithm)
     {
-        public MTDNode(SimpleChess board, string boardString)
-        {
-            this.board = board;
-            this.boardString = boardString;
-            this.upperBound = 0;
-            this.lowerBound = 0;
-            this.hasUpper = false;
-            this.hasLower = false;
-        }
-        public string boardString;
-        public SimpleChess board;
-        public bool hasUpper;
-        public bool hasLower;
-        public float upperBound;
-        public float lowerBound;
+        this._fitnessAlgorithm = _fitnessAlgorithm;
     }
 
+    public float CalculateFitness(SimpleChess board)
+    {
+        return _fitnessAlgorithm(board);
+    }
 
-    public ChessAI(int simulatedTurns, int color, float grainSize, float PieceWeight, float CenterWeight, float DevelopmentWeight, float PressureWeight, float KingWeight, float PawnWeight)
+    public ChessEngine(Func<SimpleChess, float> _fitnessAlgorithm, bool _isBlack)
+    {
+        this._fitnessAlgorithm = _fitnessAlgorithm;
+        this._isBlack = _isBlack;
+    }
+}
+
+public struct MTDNode
+{
+    public MTDNode(SimpleChess board, string boardString)
+    {
+        this.board = board;
+        this.boardString = boardString;
+        this.upperBound = 0;
+        this.lowerBound = 0;
+        this.hasUpper = false;
+        this.hasLower = false;
+    }
+    public string boardString;
+    public SimpleChess board;
+    public bool hasUpper;
+    public bool hasLower;
+    public float upperBound;
+    public float lowerBound;
+}
+
+public class ChessAIEngine
+{
+    // Public variables
+
+    public int simulatedTurns;
+    public int color;
+    public float grainSize;
+
+    // Fitness Algorithm
+
+    public float PieceWeight;
+    public float CenterWeight;
+    public float DevelopmentWeight;
+    public float PressureWeight;
+    public float KingWeight;
+    public float PawnWeight;
+    public static int[] pieceValue = { 0, 1, 3, 4, 4, 7, 10 };
+
+    public float PawnAdvancementWeight;
+
+    // Private variables
+
+    private int nodeCount;
+    private Func<SimpleChess, float> fitnessAlgorithm;
+    private int searches = 0;
+
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    /// <param name="simulatedTurns">The number of simulated turns for MTD</param>
+    /// <param name="color">The AI's color</param>
+    /// <param name="grainSize">The grain size for Alpha-Beta pruning</param>
+    /// <param name="PieceWeight">The piece weight for the fitness algorithm</param>
+    /// <param name="CenterWeight">The center weight for the fitness algorithm</param>
+    /// <param name="DevelopmentWeight">The development weight for the fitness algorithm</param>
+    /// <param name="PressureWeight">The pressure weight for the fitness algorithm</param>
+    /// <param name="KingWeight">The king weight for the fitness algorithm</param>
+    /// <param name="PawnWeight">The pawn weight for the fitness algorithm</param>
+    public ChessAIEngine(int simulatedTurns, int color, float grainSize, float PieceWeight, float CenterWeight, float DevelopmentWeight, float PressureWeight, float KingWeight, float PawnWeight)
     {
         this.simulatedTurns = simulatedTurns;
         this.color = color;
@@ -37,221 +99,6 @@ public class ChessAI
         this.PawnWeight = PawnWeight;
         this.fitnessAlgorithm = CalculateFitness;
     }
-
-
-    public int simulatedTurns;
-    public int color;
-    public float grainSize;
-    int nodeCount;
-    private Func<SimpleChess, float> fitnessAlgorithm;
-    public void IterativeDeepening(SimpleChess board, CancellationToken token)
-    {
-        float firstGuess = fitnessAlgorithm(board);
-        Dictionary<string, MTDNode> transpositionTable = new Dictionary<string, MTDNode>();
-        for (int d = 1; d < simulatedTurns; d++)
-        {
-            if (token.IsCancellationRequested)
-            {
-                token.ThrowIfCancellationRequested();
-            }
-            firstGuess = MTD(board, firstGuess, d, transpositionTable);
-        }
-        board.fitness = firstGuess;
-    }
-    public void IterativeDeepening(AIState state, CancellationToken token)
-    {
-        if (token.IsCancellationRequested)
-        {
-            token.ThrowIfCancellationRequested();
-        }
-        state.currentGuess = MTD(state.board, state.currentGuess, state.depth, state.transpositionTable);
-        state.board.fitness = state.currentGuess;
-        state.depth++;
-    }
-    public void IterativeDeepening(SimpleChess board)
-    {
-        float firstGuess = fitnessAlgorithm(board);
-        Dictionary<string, MTDNode> transpositionTable = new Dictionary<string, MTDNode>();
-        for (int d = 1; d < simulatedTurns; d++)
-        {
-            firstGuess = MTD(board, firstGuess, d, transpositionTable);
-        }
-        board.fitness = firstGuess;
-    }
-    int searches = 0;
-    float MTD(SimpleChess board, float firstGuess, int depth, Dictionary<string, MTDNode> transpositionTable)
-    {
-        float fitness = firstGuess;
-        float upperBound = float.PositiveInfinity;
-        float lowerBound = float.NegativeInfinity;
-        float beta;
-        while (!(lowerBound >= upperBound) && System.Math.Abs(fitness) != float.PositiveInfinity)
-        {
-            if (fitness == lowerBound)
-            {
-                beta = fitness + grainSize;
-            }
-            else
-            {
-                beta = fitness;
-            }
-            fitness = AlphaBeta(board, false, beta - grainSize, beta, depth, transpositionTable);
-            Interlocked.Increment(ref nodeCount);
-            Interlocked.Increment(ref searches);
-            if (fitness < beta)
-            {
-                upperBound = fitness;
-            }
-            else
-            {
-                lowerBound = fitness;
-            }
-        }
-        return fitness;
-    }
-    int TTU;
-
-    float AlphaBeta(SimpleChess board, bool ourTurn, float alpha, float beta, int depth, Dictionary<string, MTDNode> transpositionTable)
-    {
-        string boardString = board.toString();
-        if (transpositionTable.ContainsKey(boardString))
-        {
-            Interlocked.Increment(ref TTU);
-            MTDNode node = transpositionTable[boardString];
-            if (node.hasLower && node.lowerBound >= beta)
-            {
-
-                return node.lowerBound;
-            }
-            if (node.hasUpper && node.upperBound <= alpha)
-            {
-                return node.upperBound;
-            }
-
-            if (node.hasLower)
-            {
-                alpha = Math.Max(node.lowerBound, alpha);
-            }
-            if (node.hasUpper)
-            {
-                beta = Math.Min(node.upperBound, beta);
-            }
-        }
-        if (depth <= 0)
-        {
-            return fitnessAlgorithm(board);
-        }
-        else
-        {
-            float fitness;
-            if (ourTurn)
-            {
-                if (board.isDraw())
-                {
-                    return 0;
-                }
-                List<SimpleChess> newMoves = generateMoves(board, color);
-                if (newMoves.Count == 0)
-                {
-                    if ((color < 0 && board.BCheck) || (color > 0 && board.WCheck))
-                    {
-                        return -100000;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-                }
-                assignMoveOrder(newMoves);
-                fitness = float.NegativeInfinity;
-                float tempAlpha = alpha;
-                foreach (SimpleChess move in newMoves)
-                {
-                    if (fitness >= beta)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        fitness = System.Math.Max(fitness, AlphaBeta(move, false, tempAlpha, beta, depth - 1, transpositionTable));
-                        Interlocked.Increment(ref nodeCount);
-                        tempAlpha = System.Math.Max(tempAlpha, fitness);
-                    }
-                }
-            }
-            else
-            {
-                if (board.isDraw())
-                {
-                    return 0;
-                }
-                List<SimpleChess> newMoves = generateMoves(board, -color);
-                if (newMoves.Count == 0)
-                {
-                    if ((color < 0 && board.WCheck) || (color > 0 && board.BCheck))
-                    {
-                        return 100000;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-                }
-                assignMoveOrder(newMoves);
-                fitness = float.PositiveInfinity;
-                float tempBeta = beta;
-                foreach (SimpleChess move in newMoves)
-                {
-                    if (fitness <= alpha)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        fitness = System.Math.Min(fitness, AlphaBeta(move, true, alpha, tempBeta, depth - 1, transpositionTable));
-                        Interlocked.Increment(ref nodeCount);
-                        tempBeta = System.Math.Min(fitness, tempBeta);
-                    }
-                }
-            }
-            MTDNode node = new MTDNode(board, boardString);
-            if (fitness <= alpha)
-            {
-                node.upperBound = fitness;
-                node.hasUpper = true;
-            }
-            if (fitness > alpha && fitness < beta)
-            {
-                node.lowerBound = fitness;
-                node.upperBound = fitness;
-                node.hasUpper = true;
-                node.hasLower = true;
-            }
-            if (fitness >= beta)
-            {
-                node.lowerBound = fitness;
-                node.hasLower = true;
-            }
-            if (transpositionTable.ContainsKey(boardString))
-            {
-                transpositionTable[boardString] = node;
-            }
-            else
-            {
-                transpositionTable.Add(boardString, node);
-            }
-            return fitness;
-        }
-    }
-    public float PieceWeight;
-    public float CenterWeight;
-    public float DevelopmentWeight;
-    public float PressureWeight;
-    public float KingWeight;
-    public float PawnWeight;
-    public static int[] pieceValue = { 0, 1, 3, 4, 4, 7, 10 };
-
-    public float PawnAdvancementWeight;
 
     //Fitness algorithm based on chess board evaluation guide at https://chessfox.com/example-of-the-complete-evaluation-process-of-chess-a-chess-position/
 
@@ -390,36 +237,6 @@ public class ChessAI
         this.PawnWeight = PawnWeight;
     }
 
-    public void assignMoveOrder(List<SimpleChess> moves)
-    {
-        foreach (SimpleChess move in moves)
-        {
-            int order = 0;
-            if (move.WCheck || move.BCheck)
-            {
-                order += 2;
-            }
-            if (move.capture)
-            {
-                order++;
-            }
-            move.calcOrder = order;
-        }
-        moves.Sort(MoveOrder);
-    }
-    int MoveOrder(SimpleChess x, SimpleChess y)
-    {
-
-        if (x.calcOrder == y.calcOrder)
-        {
-            return 0;
-        }
-        if ((x.calcOrder > y.calcOrder))
-        {
-            return -1;
-        }
-        return 1;
-    }
     public void setFitnessAlgorithm(Func<SimpleChess, float> algorithm)
     {
         this.fitnessAlgorithm = algorithm;
